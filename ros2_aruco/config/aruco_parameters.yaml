@@ -1,6 +1,16 @@
 /aruco_node:
   ros__parameters:
-    marker_size: 0.055
-    aruco_dictionary_id: DICT_5X5_250
+    marker_size: 0.12
+    aruco_dictionary_id: DICT_6X6_1000
     image_topic: /image_raw
     camera_info_topic: /camera_info
+    visualize: false
+
+# aruco_dictionary_id 
+
+#Dictionary to use. Valid options include: DICT_4X4_100,
+#                 DICT_4X4_1000, DICT_4X4_250, DICT_4X4_50, DICT_5X5_100,
+#                 DICT_5X5_1000, DICT_5X5_250, DICT_5X5_50, DICT_6X6_100,
+#                 DICT_6X6_1000, DICT_6X6_250, DICT_6X6_50, DICT_7X7_100,
+#                 DICT_7X7_1000, DICT_7X7_250, DICT_7X7_50, DICT_ARUCO_ORIGINAL
+#                 (default: DICT_5X5_250)

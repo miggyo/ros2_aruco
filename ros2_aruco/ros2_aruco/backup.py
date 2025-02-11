@@ -1,27 +1,26 @@
 """
-
 This node locates Aruco AR markers in images and publishes their ids and poses.
 
 Subscriptions:
-    /camera/image_raw (sensor_msgs.msg.Image)
-    /camera/camera_info (sensor_msgs.msg.CameraInfo)
-    /camera/camera_info (sensor_msgs.msg.CameraInfo)
+   /camera/image_raw (sensor_msgs.msg.Image)
+   /camera/camera_info (sensor_msgs.msg.CameraInfo)
+   /camera/camera_info (sensor_msgs.msg.CameraInfo)
 
 Published Topics:
     /aruco_poses (geometry_msgs.msg.PoseArray)
-        Pose of all detected markers (suitable for rviz visualization)
+       Pose of all detected markers (suitable for rviz visualization)
 
     /aruco_markers (ros2_aruco_interfaces.msg.ArucoMarkers)
-        Provides an array of all poses along with the corresponding
-        marker ids.
+       Provides an array of all poses along with the corresponding
+       marker ids.
 
 Parameters:
     marker_size - size of the markers in meters (default .0625)
     aruco_dictionary_id - dictionary that was used to generate markers
-                        (default DICT_5X5_250)
+                          (default DICT_5X5_250)
     image_topic - image topic to subscribe to (default /camera/image_raw)
     camera_info_topic - camera info topic to subscribe to
-                        (default /camera/camera_info)
+                         (default /camera/camera_info)
 
 Author: Nathan Sprague
 Version: 10/26/2020
@@ -44,8 +43,8 @@ from geometry_msgs.msg import PoseArray, Pose
 from ros2_aruco_interfaces.msg import ArucoMarkers
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 
-from edie8_msgs.msg import ArucoPoseArray
-from edie8_msgs.msg import ArucoPose
+from alice4_vision_msgs.msg import ArucoPoseArray
+from alice4_vision_msgs.msg import ArucoPose
 
 import math
 import time
@@ -57,7 +56,7 @@ class ArucoNode(rclpy.node.Node):
         # Declare and read parameters
         self.declare_parameter(
             name="marker_size",
-            value=0.15,
+            value=0.0625,
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
                 description="Size of the markers in meters.",
@@ -66,7 +65,7 @@ class ArucoNode(rclpy.node.Node):
 
         self.declare_parameter(
             name="aruco_dictionary_id",
-            value="DICT_6X6_1000",
+            value="DICT_5X5_250",
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_STRING,
                 description="Dictionary that was used to generate markers.",
@@ -75,7 +74,7 @@ class ArucoNode(rclpy.node.Node):
 
         self.declare_parameter(
             name="image_topic",
-            value="/edie8/vision/image_raw",
+            value="/image_raw",
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_STRING,
                 description="Image topic to subscribe to.",
@@ -84,7 +83,7 @@ class ArucoNode(rclpy.node.Node):
 
         self.declare_parameter(
             name="camera_info_topic",
-            value="/edie8/vision/camera_info",
+            value="/camera_info",
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_STRING,
                 description="Camera info topic to subscribe to.",
@@ -102,7 +101,7 @@ class ArucoNode(rclpy.node.Node):
 
         self.declare_parameter(
             name="visualize",
-            value=True,
+            value=False,
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_BOOL,
                 description="Aruco marker Visualize",
@@ -156,7 +155,7 @@ class ArucoNode(rclpy.node.Node):
             CameraInfo, info_topic, self.info_callback, qos_profile_sensor_data
         )
         self.create_subscription(
-            Image, image_topic, self.image_callback, qos_profile_sensor_data
+            CompressedImage, image_topic, self.image_callback, qos_profile_sensor_data
         )
 
         self.poses_pub = self.create_publisher(ArucoPoseArray, "aruco_poses", 10)
@@ -182,13 +181,14 @@ class ArucoNode(rclpy.node.Node):
             self.get_logger().warn("No camera info has been received!")
             return
 
-        cv_image = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="mono8")
+        #cv_image = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="mono8")
 
-        #np_arr = np.frombuffer(img_msg.data, np.uint8)
-        #cv_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
+        np_arr = np.frombuffer(img_msg.data, np.uint8)
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
 
 
         pose_array = ArucoPoseArray()
+
 
         corners, marker_ids, rejected = cv2.aruco.detectMarkers(
             cv_image, self.aruco_dictionary, parameters=self.aruco_parameters
@@ -210,6 +210,10 @@ class ArucoNode(rclpy.node.Node):
                 aruco_pose.position.y = tvecs[i][0][1]
                 aruco_pose.position.z = tvecs[i][0][2]
 
+                # aruco_pose.position.x = tvecs[i][0][2]
+                # aruco_pose.position.y = tvecs[i][0][0] * -1
+                # aruco_pose.position.z = tvecs[i][0][1]
+
                 rot_matrix = np.eye(4)
                 rot_matrix[0:3, 0:3] = cv2.Rodrigues(np.array(rvecs[i][0]))[0]
                 quat = tf_transformations.quaternion_from_matrix(rot_matrix)
@@ -228,6 +232,7 @@ class ArucoNode(rclpy.node.Node):
                 # self.get_logger().info("marker id = "+str(marker_id[0]))
 
                 cv2.aruco.drawAxis(cv_image, self.mtx, self.dst, rvecs[i], tvecs[i], 0.05)
+
             self.poses_pub.publish(pose_array)
 
         else:
@@ -236,7 +241,7 @@ class ArucoNode(rclpy.node.Node):
             self.poses_pub.publish(pose_array)
 
         if (self.visualize):
-            resize_img = cv2.resize(cv_image, (480,360))
+            resize_img = cv2.resize(cv_image, (460,260))
             cv2.imshow("camera", resize_img)
             cv2.waitKey(1)
 
